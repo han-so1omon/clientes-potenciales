@@ -100,7 +100,7 @@ export default async function ProductPage({
               consentVersionId={consent.id}
               consentText={consent.text}
               tracking={tracking}
-              trustedFormEnabled={trustedFormEnabled}
+              trustedFormEnabled={trustedFormEnabled()}
             />
           ) : (
             <p role="alert">{t.errors.form}</p>

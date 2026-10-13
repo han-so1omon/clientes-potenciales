@@ -377,5 +377,6 @@ payouts; live transfers; owner's own agency as buyer with "first look".
 | 2026-10-13 | `apps/worker` deferred until the first background job; `packages/integrations` added with the Claude outreach writer |
 | 2026-10-13 | Out-of-area ZIPs are rejected at the form and not stored (data minimization) |
 | 2026-10-13 | Immutability of consent snapshots, consent wording, and audit log enforced by DB triggers |
+| 2026-10-13 | Deploy as a Docker image (Railway); migrations + idempotent seed run at container start; search indexing off until `ALLOW_INDEXING=true` (see `docs/runbooks/deploy-railway.md`) |
 | 2026-10-13 | Buyer finder emails are drafted by Claude but sent by the owner from their own mail app (no automated sending; keeps volume human-scale and CAN-SPAM simple) |
 | 2026-10-13 | D1 changed: from final expense only to multiple admin-selectable "living benefit" lines; final expense off by default. Products and states are switched on/off in Admin → Markets |

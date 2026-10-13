@@ -10,7 +10,7 @@ export const E2E_ENV = {
   PII_HASH_SECRET: "e2e-hash-secret-0123456789",
   ADMIN_PASSWORD: "e2e-admin-pass",
   ADMIN_SESSION_SECRET: "e2e-session-secret-0123456789",
-  NEXT_PUBLIC_TRUSTEDFORM_ENABLED: "false",
+  TRUSTEDFORM_ENABLED: "false",
   // No ANTHROPIC_API_KEY: outreach uses the template writer, so tests never call the API.
   ANTHROPIC_API_KEY: "",
   OUTREACH_SENDER_NAME: "Sam Owner",
