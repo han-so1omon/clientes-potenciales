@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
+import { interestLabel, lineTitle } from "@/lib/lineLabels";
 
 const BLOCKER_LABELS: Record<string, string> = {
   no_consent_snapshot: "No consent record",
@@ -70,9 +71,8 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             {lead.zip}, {lead.state} ({lead.timeZone})
           </Row>
           <Row label="Language">{lead.language}</Row>
-          <Row label="Coverage interest">
-            ${Number(lead.coverageAmount).toLocaleString("en-US")}
-          </Row>
+          <Row label="Product">{lineTitle(lead.line)}</Row>
+          <Row label="Answer">{interestLabel(lead.line, lead.interest)}</Row>
           <Row label="Best time to call">{lead.bestTimeToCall}</Row>
           <Row label="Source">{source?.name}</Row>
           <Row label="Campaign">{campaign ? `${campaign.name} (${campaign.code})` : undefined}</Row>

@@ -15,7 +15,7 @@ const consent = {
   consentedAt: new Date("2026-10-13T15:00:00Z"),
   ipAddress: "203.0.113.5",
   userAgent: "test",
-  pageUrl: "https://example.com/en/final-expense",
+  pageUrl: "https://example.com/en/long-term-care",
 };
 
 function sampleLead(
@@ -23,7 +23,7 @@ function sampleLead(
   overrides: Partial<NormalizedLead> = {},
 ): NormalizedLead {
   return {
-    line: "final_expense",
+    line: "long_term_care",
     language: "en",
     consentVersionId,
     firstName: "Ann",
@@ -35,7 +35,7 @@ function sampleLead(
     zip: "33101",
     state: "FL",
     timeZone: "America/New_York",
-    coverageAmount: "10000",
+    interest: "planning_ahead",
     bestTimeToCall: "morning",
     campaignCode: undefined,
     utm: {},
@@ -49,7 +49,7 @@ let enVersionId: string;
 
 beforeAll(async () => {
   await seed(db);
-  const version = await getActiveConsentVersion(db, "final_expense", "en");
+  const version = await getActiveConsentVersion(db, "long_term_care", "en");
   if (!version) throw new Error("seed did not create consent version");
   enVersionId = version.id;
 });

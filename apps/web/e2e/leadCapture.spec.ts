@@ -15,16 +15,17 @@ async function fillValidForm(page: Page, phone: string, zip = "33101") {
 test("English: submit form → thank-you page → lead and consent snapshot stored", async ({
   page,
 }) => {
-  await page.goto("/en/final-expense?c=EXAMPLE-MAILER&utm_source=mail");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("final expenses");
+  await page.goto("/en/long-term-care?c=EXAMPLE-MAILER&utm_source=mail");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Plan ahead for care");
   const consentText = await page.locator("[data-tf-element-role=consent-language]").innerText();
 
   await fillValidForm(page, "(305) 555-2001");
+  await page.getByLabel("What brings you here today?").selectOption("comparing_options");
   await page.getByRole("button", { name: "See My Options" }).click();
-  await expect(page).toHaveURL(/\/en\/final-expense\/thank-you$/);
+  await expect(page).toHaveURL(/\/en\/long-term-care\/thank-you$/);
 
   const [row] = await sql`
-    SELECT l.status, l.state, l.language, l.utm, c.code, s.rendered_text
+    SELECT l.status, l.state, l.language, l.line, l.interest, l.utm, c.code, s.rendered_text
     FROM leads l
     JOIN consent_snapshots s ON s.lead_id = l.id
     LEFT JOIN campaigns c ON c.id = l.campaign_id
@@ -40,7 +41,7 @@ test("English: submit form → thank-you page → lead and consent snapshot stor
 });
 
 test("Spanish: errors are shown in Spanish and entered values are kept", async ({ page }) => {
-  await page.goto("/es/final-expense");
+  await page.goto("/es/long-term-care");
   await fillValidForm(page, "(305) 555-2002", "10001");
   await page.getByRole("button", { name: "Ver mis opciones" }).click();
 
@@ -53,7 +54,7 @@ test("Spanish: errors are shown in Spanish and entered values are kept", async (
 });
 
 test("consent checkbox is required", async ({ page }) => {
-  await page.goto("/en/final-expense");
+  await page.goto("/en/long-term-care");
   await fillValidForm(page, "(305) 555-2003");
   await page.locator("input[name=consentGiven]").uncheck();
   await page.getByRole("button", { name: "See My Options" }).click();
@@ -61,7 +62,7 @@ test("consent checkbox is required", async ({ page }) => {
 });
 
 test("opt-out suppresses existing leads for that phone", async ({ page }) => {
-  await page.goto("/en/final-expense");
+  await page.goto("/en/long-term-care");
   await fillValidForm(page, "(305) 555-2004");
   await page.getByRole("button", { name: "See My Options" }).click();
   await expect(page).toHaveURL(/thank-you$/);
@@ -76,8 +77,26 @@ test("opt-out suppresses existing leads for that phone", async ({ page }) => {
 });
 
 test("language switch keeps tracking parameters", async ({ page }) => {
-  await page.goto("/en/final-expense?c=EXAMPLE-MAILER");
+  await page.goto("/en/long-term-care?c=EXAMPLE-MAILER");
   await page.getByRole("link", { name: "Español" }).click();
-  await expect(page).toHaveURL(/\/es\/final-expense\?c=EXAMPLE-MAILER$/);
+  await expect(page).toHaveURL(/\/es\/long-term-care\?c=EXAMPLE-MAILER$/);
   await expect(page.locator("html")).toHaveAttribute("lang", "es");
+});
+
+test("home page lists switched-on products only", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/en$/);
+  await expect(page.getByRole("link", { name: /Long-Term Care Insurance/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Final Expense/ })).toHaveCount(0);
+  const res = await page.goto("/en/final-expense");
+  expect(res?.status()).toBe(404);
+});
+
+test("each product asks its own question and states the admin's age range", async ({ page }) => {
+  await page.goto("/es/dental-vision-hearing");
+  await expect(page.getByLabel("¿Qué cobertura desea?")).toBeVisible();
+  await expect(page.getByText("Opciones para personas de 50 a 89 años")).toBeVisible();
+  await expect(page.locator("[data-tf-element-role=consent-language]")).toContainText(
+    "seguro dental, de visión y de audición",
+  );
 });

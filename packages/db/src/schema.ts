@@ -25,7 +25,6 @@ const updatedAt = () =>
     .defaultNow()
     .$onUpdate(() => new Date());
 
-export const lineEnum = pgEnum("insurance_line", ["final_expense"]);
 export const languageEnum = pgEnum("language", ["en", "es"]);
 export const supplierTypeEnum = pgEnum("supplier_type", ["owner", "external"]);
 export const sourceChannelEnum = pgEnum("source_channel", [
@@ -44,6 +43,25 @@ export const leadStatusEnum = pgEnum("lead_status", [
   "rejected",
   "suppressed",
 ]);
+
+/**
+ * Admin-controlled settings per product line (PLAN.md §4.7). Which lines exist is defined in
+ * code (`LINE_CATALOG` in @cp/core); whether each is offered, and its age range, lives here.
+ */
+export const insuranceLines = pgTable("insurance_lines", {
+  key: text("key").primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  minAge: integer("min_age").notNull(),
+  maxAge: integer("max_age").notNull(),
+  updatedAt: updatedAt(),
+});
+
+/** Admin-controlled geographic markets: states currently accepting leads. */
+export const serviceStates = pgTable("service_states", {
+  state: text("state").primaryKey(),
+  enabled: boolean("enabled").notNull().default(true),
+  updatedAt: updatedAt(),
+});
 
 export const suppliers = pgTable("suppliers", {
   id: id(),
@@ -73,7 +91,9 @@ export const campaigns = pgTable("campaigns", {
   /** Short code carried in URLs/QR codes (?c=CODE). */
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
-  line: lineEnum("line").notNull(),
+  line: text("line")
+    .notNull()
+    .references(() => insuranceLines.key),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -86,7 +106,9 @@ export const consentVersions = pgTable(
   "consent_versions",
   {
     id: id(),
-    line: lineEnum("line").notNull(),
+    line: text("line")
+      .notNull()
+      .references(() => insuranceLines.key),
     language: languageEnum("language").notNull(),
     version: integer("version").notNull(),
     text: text("text").notNull(),
@@ -112,7 +134,9 @@ export const leads = pgTable(
       .notNull()
       .references(() => sources.id),
     campaignId: uuid("campaign_id").references(() => campaigns.id),
-    line: lineEnum("line").notNull(),
+    line: text("line")
+      .notNull()
+      .references(() => insuranceLines.key),
     language: languageEnum("language").notNull(),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
@@ -125,7 +149,8 @@ export const leads = pgTable(
     zip: text("zip").notNull(),
     state: text("state").notNull(),
     timeZone: text("time_zone").notNull(),
-    coverageAmount: text("coverage_amount").notNull(),
+    /** Answer to the line's qualifying question (see LINE_CATALOG interestOptions). */
+    interest: text("interest").notNull(),
     bestTimeToCall: text("best_time_to_call").notNull(),
     utm: jsonb("utm").$type<Record<string, string | undefined>>().notNull().default({}),
     formFillSeconds: integer("form_fill_seconds"),

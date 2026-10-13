@@ -2,10 +2,9 @@ import { z } from "zod";
 import { ageOn, isValidDate, toIsoDate } from "./age";
 import { lookupZip, type ServiceState, type TimeZone } from "./geo";
 import { normalizeEmail } from "./hash";
-import { LANGUAGES, type Language, LINE_CONFIG, LINES, type Line } from "./lines";
+import { LANGUAGES, type Language, LINE_CATALOG, LINES, type Line } from "./lines";
 import { normalizeUsPhone } from "./phone";
 
-export const COVERAGE_AMOUNTS = ["5000", "10000", "15000", "25000", "50000"] as const;
 export const CALL_TIMES = ["morning", "afternoon", "evening", "any"] as const;
 
 const MAX_UTM_LENGTH = 200;
@@ -40,7 +39,8 @@ export const leadSubmissionSchema = z.object({
     .string()
     .trim()
     .regex(/^\d{5}$/),
-  coverageAmount: z.enum(COVERAGE_AMOUNTS),
+  /** Answer to the line's qualifying question (allowed values: LINE_CATALOG[line].interestOptions). */
+  interest: z.string().trim().min(1).max(40),
   bestTimeToCall: z.enum(CALL_TIMES),
   campaignCode: optionalTrimmed(64),
   utmSource: optionalTrimmed(MAX_UTM_LENGTH),
@@ -69,7 +69,7 @@ export interface NormalizedLead {
   zip: string;
   state: ServiceState;
   timeZone: TimeZone;
-  coverageAmount: (typeof COVERAGE_AMOUNTS)[number];
+  interest: string;
   bestTimeToCall: (typeof CALL_TIMES)[number];
   campaignCode: string | undefined;
   utm: { source?: string; medium?: string; campaign?: string; content?: string };
@@ -96,10 +96,23 @@ export type SubmissionResult =
 
 const TRUSTEDFORM_URL = /^https:\/\/cert\.trustedform\.com\/[A-Za-z0-9]+$/;
 
+/** Live, admin-controlled rules for the submission (from the database). */
+export interface SubmissionRules {
+  minAge: number;
+  maxAge: number;
+  /** States currently accepting leads. */
+  enabledStates: readonly string[];
+}
+
 /**
- * Validates and normalizes a landing-page submission. Pure: pass `now` in.
+ * Validates and normalizes a landing-page submission. Pure: pass `now` and `rules` in.
+ * The caller must already have checked that the line is enabled.
  */
-export function parseLeadSubmission(raw: unknown, now: Date): SubmissionResult {
+export function parseLeadSubmission(
+  raw: unknown,
+  now: Date,
+  rules: SubmissionRules,
+): SubmissionResult {
   const parsed = leadSubmissionSchema.safeParse(raw);
   if (!parsed.success) {
     const errors: Partial<Record<string, SubmissionErrorCode>> = {};
@@ -131,11 +144,15 @@ export function parseLeadSubmission(raw: unknown, now: Date): SubmissionResult {
     errors.birthDay = "invalid_date";
   } else {
     age = ageOn(dob, now);
-    const { minAge, maxAge } = LINE_CONFIG[input.line];
-    if (age < minAge || age > maxAge) errors.birthYear = "age_out_of_range";
+    if (age < rules.minAge || age > rules.maxAge) errors.birthYear = "age_out_of_range";
   }
 
-  const area = lookupZip(input.zip);
+  if (!LINE_CATALOG[input.line].interestOptions.includes(input.interest)) {
+    errors.interest = "invalid";
+  }
+
+  const zipArea = lookupZip(input.zip);
+  const area = zipArea && rules.enabledStates.includes(zipArea.state) ? zipArea : undefined;
   if (!area) errors.zip = "out_of_area";
 
   if (!phoneE164 || age === undefined || !area || Object.keys(errors).length > 0) {
@@ -167,7 +184,7 @@ export function parseLeadSubmission(raw: unknown, now: Date): SubmissionResult {
       zip: input.zip,
       state: area.state,
       timeZone: area.timeZone,
-      coverageAmount: input.coverageAmount,
+      interest: input.interest,
       bestTimeToCall: input.bestTimeToCall,
       campaignCode: input.campaignCode,
       utm: {

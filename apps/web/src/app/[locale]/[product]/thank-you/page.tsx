@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { resolveLocale } from "@/lib/locale";
 import { getMessages } from "@/lib/messages";
+import { resolveEnabledLine } from "@/lib/product";
 
-type Params = Promise<{ locale: string }>;
+export const dynamic = "force-dynamic";
+
+type Params = Promise<{ locale: string; product: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const t = getMessages(await resolveLocale(params));
@@ -12,6 +15,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function ThankYouPage({ params }: { params: Params }) {
   const locale = await resolveLocale(params);
+  await resolveEnabledLine(params);
   const t = getMessages(locale);
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">

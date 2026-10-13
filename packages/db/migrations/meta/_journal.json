@@ -15,6 +15,20 @@
       "when": 1791915119384,
       "tag": "0001_immutability",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791915921774,
+      "tag": "0002_line_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791915931436,
+      "tag": "0003_drop_coverage_amount",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { listRecentLeads } from "@cp/db";
 import Link from "next/link";
 import { getDb } from "@/lib/db";
+import { lineTitle } from "@/lib/lineLabels";
 
 const STATUS_STYLE: Record<string, string> = {
   received: "bg-blue-100 text-blue-900",
@@ -35,6 +36,7 @@ export default async function LeadsPage() {
               <th className="p-2">Received</th>
               <th className="p-2">Name</th>
               <th className="p-2">Phone</th>
+              <th className="p-2">Product</th>
               <th className="p-2">State</th>
               <th className="p-2">Age</th>
               <th className="p-2">Lang</th>
@@ -54,6 +56,7 @@ export default async function LeadsPage() {
                   {lead.firstName} {lead.lastName}
                 </td>
                 <td className="p-2">{lead.phoneE164}</td>
+                <td className="p-2">{lineTitle(lead.line)}</td>
                 <td className="p-2">{lead.state}</td>
                 <td className="p-2">{lead.ageAtSubmission}</td>
                 <td className="p-2">{lead.language}</td>

@@ -1,13 +1,17 @@
 "use client";
 
-import { CALL_TIMES, COVERAGE_AMOUNTS, type Language } from "@cp/core";
+import { CALL_TIMES, type Language, LINE_CATALOG, type Line } from "@cp/core";
 import { useActionState, useEffect, useState } from "react";
+import { fill } from "@/lib/format";
 import type { Messages } from "@/lib/messages";
 import { type LeadFormState, submitLead } from "./actions";
 import { TrustedFormScript } from "./TrustedFormScript";
 
 interface Props {
   t: Messages;
+  line: Line;
+  minAge: number;
+  maxAge: number;
   language: Language;
   consentVersionId: string;
   consentText: string;
@@ -21,6 +25,9 @@ const inputClass =
 
 export function LeadForm({
   t,
+  line,
+  minAge,
+  maxAge,
   language,
   consentVersionId,
   consentText,
@@ -34,7 +41,7 @@ export function LeadForm({
   const v = state.values;
   const errorFor = (field: string) => {
     const code = state.errors[field];
-    return code ? t.errors[code] : undefined;
+    return code ? fill(t.errors[code], { min: minAge, max: maxAge }) : undefined;
   };
   const hasErrors = Object.keys(state.errors).length > 0;
 
@@ -67,7 +74,7 @@ export function LeadForm({
           {state.errors.form ? t.errors.form : t.errors.summary}
         </p>
       )}
-      <input type="hidden" name="line" value="final_expense" />
+      <input type="hidden" name="line" value={line} />
       <input type="hidden" name="language" value={language} />
       <input type="hidden" name="consentVersionId" value={consentVersionId} />
       <input type="hidden" name="formStartedAt" value={v.formStartedAt ?? startedAt} />
@@ -212,19 +219,18 @@ export function LeadForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         {field(
-          "coverageAmount",
-          t.fields.coverageAmount,
+          "interest",
+          t.lines[line].question,
           <select
-            id="coverageAmount"
-            name="coverageAmount"
-            defaultValue={v.coverageAmount ?? "10000"}
+            id="interest"
+            name="interest"
+            defaultValue={v.interest ?? LINE_CATALOG[line].interestOptions[0]}
             className={inputClass}
-            {...aria("coverageAmount")}
+            {...aria("interest")}
           >
-            {COVERAGE_AMOUNTS.map((amount) => (
-              <option key={amount} value={amount}>
-                ${Number(amount).toLocaleString("en-US")}
-                {amount === "50000" ? "+" : ""}
+            {LINE_CATALOG[line].interestOptions.map((option) => (
+              <option key={option} value={option}>
+                {t.lines[line].options[option]}
               </option>
             ))}
           </select>,
@@ -277,7 +283,7 @@ export function LeadForm({
         data-tf-element-role="submit"
         className="w-full rounded-lg bg-brand px-6 py-4 text-xl font-bold text-white hover:bg-brand-dark disabled:opacity-60"
       >
-        {pending ? t.finalExpense.submitting : t.finalExpense.submit}
+        {pending ? t.landing.submitting : t.landing.submit}
       </button>
       {trustedFormEnabled && <TrustedFormScript />}
     </form>

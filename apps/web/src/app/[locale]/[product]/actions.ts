@@ -1,7 +1,13 @@
 "use server";
 
-import { isLanguage, parseLeadSubmission, type SubmissionErrorCode } from "@cp/core";
-import { createLeadFromLandingPage } from "@cp/db";
+import {
+  isLanguage,
+  isLine,
+  LINE_CATALOG,
+  parseLeadSubmission,
+  type SubmissionErrorCode,
+} from "@cp/core";
+import { createLeadFromLandingPage, getLineSettings, listEnabledStates } from "@cp/db";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
@@ -21,21 +27,34 @@ export async function submitLead(_prev: LeadFormState, formData: FormData): Prom
   for (const [key, value] of formData.entries()) {
     if (typeof value === "string" && !key.startsWith("$ACTION")) values[key] = value;
   }
-  const raw = { ...values, trustedFormCertUrl: values[TRUSTEDFORM_FIELD] };
+  const language = values.language && isLanguage(values.language) ? values.language : "en";
+  const line = values.line && isLine(values.line) ? values.line : undefined;
+  if (!line) return { errors: { form: "form" }, values };
+
+  const db = getDb();
+  const settings = await getLineSettings(db, line);
+  // The line may have been switched off after the page loaded.
+  if (!settings?.enabled) return { errors: { form: "form" }, values };
 
   const now = new Date();
-  const result = parseLeadSubmission(raw, now);
-  const language = values.language && isLanguage(values.language) ? values.language : "en";
+  const result = parseLeadSubmission(
+    { ...values, trustedFormCertUrl: values[TRUSTEDFORM_FIELD] },
+    now,
+    {
+      minAge: settings.minAge,
+      maxAge: settings.maxAge,
+      enabledStates: await listEnabledStates(db),
+    },
+  );
 
   if (result.kind === "invalid") return { errors: result.errors, values };
 
   if (result.kind === "accepted") {
     const requestHeaders = await headers();
-    const env = serverEnv();
     let created: Awaited<ReturnType<typeof createLeadFromLandingPage>>;
     try {
       created = await createLeadFromLandingPage(
-        getDb(),
+        db,
         result.lead,
         {
           consentedAt: now,
@@ -43,7 +62,7 @@ export async function submitLead(_prev: LeadFormState, formData: FormData): Prom
           userAgent: requestHeaders.get("user-agent") ?? undefined,
           pageUrl: requestHeaders.get("referer") ?? undefined,
         },
-        env.PII_HASH_SECRET,
+        serverEnv().PII_HASH_SECRET,
       );
     } catch (error) {
       // Never log the submission itself: it contains PII.
@@ -54,5 +73,5 @@ export async function submitLead(_prev: LeadFormState, formData: FormData): Prom
   }
 
   // Honeypot ("discarded") submissions also land here so bots see a normal success.
-  redirect(`/${language}/final-expense/thank-you`);
+  redirect(`/${language}/${LINE_CATALOG[line].slug}/thank-you`);
 }

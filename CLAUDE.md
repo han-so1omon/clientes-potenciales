@@ -57,13 +57,18 @@ All of lint, typecheck, `pnpm test`, and e2e must pass before pushing; CI runs t
 
 ## Where things live
 
+- Product lines catalog (what exists): `packages/core/src/lines.ts`; live on/off + ages + states
+  are DB settings edited in Admin → Markets (`packages/db/src/markets.ts`). Adding a line:
+  `docs/runbooks/add-insurance-line.md`.
 - Lead form validation & normalization: `packages/core/src/leadSubmission.ts`
 - Compliance gate (can this lead be sold?): `packages/core/src/sellability.ts`
 - ZIP → state/time zone: `packages/core/src/geo.ts`
 - DB immutability triggers: `packages/db/migrations/0001_immutability.sql`
 - Site copy (EN/ES): `apps/web/src/lib/messages/{en,es}.ts` — `es` is type-checked against `en`,
   and a test checks the consent text quotes the exact submit-button label.
-- Draft consent text seeded from `packages/db/src/seedData/consent.ts` (source: `docs/legal/`).
+- Draft consent templates seeded from `packages/db/src/seedData/consent.ts` (source: `docs/legal/`);
+  `{{PRODUCT}}` is replaced by each line's name.
+- Server actions are public endpoints: every admin action must call `requireAdmin()` itself.
 - Admin console: `apps/web/src/app/admin/`; every admin page/route must call `requireAdmin()`/`isAdmin()`.
 
 ## Repo layout

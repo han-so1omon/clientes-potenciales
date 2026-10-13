@@ -7,7 +7,9 @@ record the change in the Decision Log at the bottom.
 
 ## 1. Summary
 
-A platform to **generate, verify, and sell insurance leads** for U.S. consumers aged ~60+, starting in
+A platform to **generate, verify, and sell insurance leads** for U.S. consumers aged ~50+ (core market
+60+) for insurance that pays benefits **while the person is alive** (care, illness, hospital, health-cost
+gaps), starting in
 the **Southeast** (FL, GA, AL, MS, TN, SC, NC, LA), in **English and Spanish**.
 
 - **Now:** sell the owner's own leads to licensed agents and agencies.
@@ -19,7 +21,7 @@ the **Southeast** (FL, GA, AL, MS, TN, SC, NC, LA), in **English and Spanish**.
 
 | # | Decision | Choice |
 |---|---|---|
-| D1 | First insurance line | **Final expense**; then Medicare Supplement; Medicare Advantage/Part D only after legal sign-off |
+| D1 | Insurance lines | **Multiple "living benefit" lines for 50+**, each switched on/off by the admin (Markets page): long-term care, home health care, critical illness, hospital indemnity, life insurance with living benefits, dental/vision/hearing. Medicare Supplement available but off until counsel sign-off; final expense (burial) available but off by default. Medicare Advantage/Part D not offered |
 | D2 | Landing pages | **Hosted by this platform** (full control of consent records) |
 | D3 | Stack | **TypeScript** end to end (see §8) |
 | D4 | Platform budget | **~$200/month** to start (excludes ad/mailer spend and legal fees) |
@@ -96,9 +98,11 @@ Claude drafts all of the above for counsel to review. **None are used live until
 ## 4. Modules
 
 ### 4.1 Lead capture — landing pages
-- Template-based pages per **line × language** (start: final expense EN, final expense ES).
-- Short multi-step form (senior-friendly: large text, high contrast, mobile-first, few fields):
-  coverage amount interest, age/DOB, ZIP, name, phone, email (optional), best time to call.
+- One page per **enabled line × language** at `/{en|es}/{line-slug}`; `/{en|es}` lists enabled lines.
+- Lines are defined in code (`LINE_CATALOG`); which are offered, their age ranges, and which states
+  accept leads are **admin settings** (Admin → Markets). See `docs/runbooks/add-insurance-line.md`.
+- Short form (senior-friendly: large text, high contrast, mobile-first, few fields): one qualifying
+  question per line (never health questions), DOB, ZIP, name, phone, email (optional), best time to call.
 - TrustedForm script on every page; consent checkbox/disclosure adjacent to submit button.
 - UTM / campaign parameters captured automatically; mailer QR codes land here with the drop's code.
 - Thank-you page sets expectations ("a licensed agent will call you").
@@ -198,7 +202,9 @@ Money is always **integer cents**. Timestamps are UTC. All tables have `id`, `cr
 | `Affiliate` | source_id, api_key_hash, payout_cents, status |
 | `ConsentVersion` | line, language, version, text, buyer disclosure list, counsel_approved_at, active |
 | `LandingPage` | slug, line, language, template, consent_version_id, status |
-| `Lead` | supplier_id, campaign_id, line, first/last name, phone (E.164), email, dob, zip, state, county, time zone, language, status, tier, score, phone_hash |
+| `InsuranceLine` | key (catalog line), enabled, min_age, max_age — admin-controlled |
+| `ServiceState` | state, enabled — admin-controlled |
+| `Lead` | supplier_id, campaign_id, line, interest (answer to the line's question), first/last name, phone (E.164), email, dob, zip, state, county, time zone, language, status, tier, score, phone_hash |
 | `ConsentSnapshot` | lead_id, consent_version_id, rendered_text, consented_at, ip, user_agent, page_url, trustedform_url, jornaya_id — **immutable** |
 | `ValidationResult` | lead_id, check, provider, outcome, details (JSON) |
 | `Buyer` | name, type, status, agreement_version, agreement_accepted_at |
@@ -313,7 +319,8 @@ Excluded from the platform budget: ad spend, mailer printing/postage, affiliate 
 
 **Claude tasks**
 - [x] Scaffold monorepo, CI, CLAUDE.md conventions, Drizzle schema for Phase 0 entities
-- [x] Final expense landing page EN + ES with consent capture and TrustedForm hook
+- [x] Landing pages EN + ES per product line with consent capture and TrustedForm hook
+- [x] Admin Markets page: switch products and states on/off, set age ranges
 - [x] Lead storage + admin lead list/detail + CSV export (for manual trial sales)
 - [x] Consumer opt-out page (EN/ES) → suppression list
 - [ ] Buyer finder v1: prospects, pipeline stages, notes, AI outreach drafts
@@ -367,3 +374,4 @@ payouts; live transfers; owner's own agency as buyer with "first look".
 | 2026-10-13 | `apps/worker` and `packages/integrations` deferred until the first background job / vendor call |
 | 2026-10-13 | Out-of-area ZIPs are rejected at the form and not stored (data minimization) |
 | 2026-10-13 | Immutability of consent snapshots, consent wording, and audit log enforced by DB triggers |
+| 2026-10-13 | D1 changed: from final expense only to multiple admin-selectable "living benefit" lines; final expense off by default. Products and states are switched on/off in Admin → Markets |

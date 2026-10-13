@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { type LeadSubmissionInput, parseLeadSubmission } from "./leadSubmission";
+import { SERVICE_STATES } from "./geo";
+import {
+  type LeadSubmissionInput,
+  parseLeadSubmission,
+  type SubmissionRules,
+} from "./leadSubmission";
 
 const NOW = new Date("2026-10-13T15:00:00Z");
+const RULES: SubmissionRules = { minAge: 50, maxAge: 85, enabledStates: SERVICE_STATES };
 
 const valid: LeadSubmissionInput = {
-  line: "final_expense",
+  line: "critical_illness",
   language: "es",
   consentVersionId: "3f1c2b9e-8a4d-4c3b-9f1e-2a7d6c5b4e3f",
   consentGiven: "yes",
@@ -16,7 +22,7 @@ const valid: LeadSubmissionInput = {
   birthDay: "12",
   birthYear: "1958",
   zip: "33101",
-  coverageAmount: "10000",
+  interest: "25000",
   bestTimeToCall: "morning",
   campaignCode: "MAILER-OCT",
   utmSource: "facebook",
@@ -26,18 +32,18 @@ const valid: LeadSubmissionInput = {
 };
 
 function expectInvalid(raw: unknown) {
-  const result = parseLeadSubmission(raw, NOW);
+  const result = parseLeadSubmission(raw, NOW, RULES);
   if (result.kind !== "invalid") throw new Error(`expected invalid, got ${result.kind}`);
   return result.errors;
 }
 
 describe("parseLeadSubmission", () => {
   it("accepts and normalizes a valid submission", () => {
-    const result = parseLeadSubmission(valid, NOW);
+    const result = parseLeadSubmission(valid, NOW, RULES);
     expect(result).toEqual({
       kind: "accepted",
       lead: {
-        line: "final_expense",
+        line: "critical_illness",
         language: "es",
         consentVersionId: valid.consentVersionId,
         firstName: "María",
@@ -49,7 +55,7 @@ describe("parseLeadSubmission", () => {
         zip: "33101",
         state: "FL",
         timeZone: "America/New_York",
-        coverageAmount: "10000",
+        interest: "25000",
         bestTimeToCall: "morning",
         campaignCode: "MAILER-OCT",
         utm: { source: "facebook", medium: undefined, campaign: undefined, content: undefined },
@@ -60,12 +66,12 @@ describe("parseLeadSubmission", () => {
   });
 
   it("treats a blank email as absent", () => {
-    const result = parseLeadSubmission({ ...valid, email: "" }, NOW);
+    const result = parseLeadSubmission({ ...valid, email: "" }, NOW, RULES);
     expect(result.kind === "accepted" && result.lead.email).toBeUndefined();
   });
 
   it("silently discards honeypot submissions", () => {
-    expect(parseLeadSubmission({ ...valid, website: "http://spam" }, NOW)).toEqual({
+    expect(parseLeadSubmission({ ...valid, website: "http://spam" }, NOW, RULES)).toEqual({
       kind: "discarded",
     });
   });
@@ -101,9 +107,27 @@ describe("parseLeadSubmission", () => {
     );
   });
 
-  it("enforces the line's age range", () => {
+  it("enforces the line's age range from the rules", () => {
     expect(expectInvalid({ ...valid, birthYear: "1990" }).birthYear).toBe("age_out_of_range");
     expect(expectInvalid({ ...valid, birthYear: "1930" }).birthYear).toBe("age_out_of_range");
+    const narrow = { ...RULES, minAge: 70, maxAge: 79 };
+    const result = parseLeadSubmission(valid, NOW, narrow);
+    expect(result.kind === "invalid" && result.errors.birthYear).toBe("age_out_of_range");
+  });
+
+  it("only accepts answers that belong to the line's question", () => {
+    expect(expectInvalid({ ...valid, interest: "dental" }).interest).toBe("invalid");
+    const dvh = parseLeadSubmission(
+      { ...valid, line: "dental_vision_hearing", interest: "dental" },
+      NOW,
+      RULES,
+    );
+    expect(dvh.kind).toBe("accepted");
+  });
+
+  it("rejects ZIPs in states the admin has switched off", () => {
+    const result = parseLeadSubmission(valid, NOW, { ...RULES, enabledStates: ["GA"] });
+    expect(result.kind === "invalid" && result.errors.zip).toBe("out_of_area");
   });
 
   it("rejects ZIPs outside the service area", () => {
@@ -119,6 +143,7 @@ describe("parseLeadSubmission", () => {
     const result = parseLeadSubmission(
       { ...valid, trustedFormCertUrl: "https://evil.example.com/x" },
       NOW,
+      RULES,
     );
     expect(result.kind === "accepted" && result.lead.trustedFormCertUrl).toBeUndefined();
   });
@@ -127,6 +152,7 @@ describe("parseLeadSubmission", () => {
     const result = parseLeadSubmission(
       { ...valid, formStartedAt: String(NOW.getTime() + 1000) },
       NOW,
+      RULES,
     );
     expect(result.kind === "accepted" && result.lead.formFillSeconds).toBeUndefined();
   });

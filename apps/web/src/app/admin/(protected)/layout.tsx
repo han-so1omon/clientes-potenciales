@@ -12,6 +12,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
       <header className="flex items-center justify-between bg-gray-900 px-6 py-3 text-white">
         <nav className="flex gap-6 font-semibold">
           <Link href="/admin/leads">Leads</Link>
+          <Link href="/admin/markets">Markets</Link>
         </nav>
         <form action={logout}>
           <button type="submit" className="underline">

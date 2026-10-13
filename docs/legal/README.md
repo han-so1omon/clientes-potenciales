@@ -26,6 +26,21 @@
 - Consent is captured with TrustedForm certificates and stored as immutable snapshots, including the
   exact text shown and the partner list in effect.
 
+## Multiple product lines (added 2026-10-13)
+
+The platform now offers several senior insurance lines that pay benefits while the person is alive
+(long-term care, home health care, critical illness, hospital indemnity, life insurance with living
+benefits, dental/vision/hearing; Medicare Supplement and final expense available but switched off).
+The consent disclosure in `consent-final-expense.*.md` is used as a **template**: the product name
+replaces "final expense insurance" / "seguros de gastos finales" for each line (names are in
+`packages/core/src/lines.ts`). Questions for counsel:
+
+- Is one template with the product name substituted acceptable, or does any line need its own wording?
+- Medicare Supplement: what additional disclosures or restrictions apply to lead generation for
+  Medigap (state rules, CMS/TPMO rules if any), and does the website disclaimer suffice?
+- Life insurance with living benefits: is the landing-page description of accelerated/living benefits
+  accurate enough, given that availability varies by policy and rider?
+
 ## Documents
 
 | File | Document | Audience | Notes |
