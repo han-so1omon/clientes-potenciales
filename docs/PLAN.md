@@ -166,9 +166,11 @@ Phase 3: ping-post (anonymized preview → bids → sale).
 - Fields: name, company, states licensed, lines, language served (flag Spanish-speaking agents),
   contact info, source, notes.
 - **Pipeline:** `prospect → contacted → replied → trial sent → paying → churned`.
-- **AI-drafted outreach:** Claude drafts personalized emails; drafts are placed in the owner's Gmail
-  (or shown in-app) for review; the owner sends. Follow-up reminders. CAN-SPAM footer and opt-out
-  honored. No automated cold calls or texts.
+- **AI-drafted outreach:** Claude drafts personalized emails in English or Spanish (template fallback
+  when no API key is set or the AI call fails); the owner edits in-app, sends from their own email app,
+  then logs it — which moves the prospect to *Contacted* and schedules a follow-up 4 days later.
+  CAN-SPAM footer (name, postal address, opt-out) appended automatically; "do not contact" blocks
+  outreach. No automated sending, cold calls, or texts. See `docs/runbooks/finding-buyers.md`.
 - **Trial offer:** send N free/discounted leads to a prospect, tracked as a promotional sale.
 - Reports: which prospect sources turn into paying buyers.
 
@@ -217,8 +219,8 @@ Money is always **integer cents**. Timestamps are UTC. All tables have `id`, `cr
 | `LedgerEntry` | buyer_id, amount_cents (+/−), type (`topup`/`sale`/`return_credit`/`adjustment`/`promo`), ref, **append-only** |
 | `Suppression` | phone_hash/email_hash, reason, source, created_at |
 | `StateRule` | state, rule type, value (calling hours, frequency limits, notes) |
-| `BuyerProspect` | name, company, states, lines, languages, contact, source, stage, owner notes |
-| `ProspectActivity` | prospect_id, type (email/call/note/trial), content, at |
+| `BuyerProspect` | name, company, type, email, phone, NPN, licensed states, lines, languages, source, stage, next follow-up, do-not-contact, notes (unique by email / NPN) |
+| `ProspectActivity` | prospect_id, type (created/imported/note/call/email_sent/stage_change/do_not_contact/trial), summary, details, actor |
 | `AuditLog` | actor, action, entity, before/after, at |
 
 ### Lead lifecycle
@@ -274,6 +276,7 @@ any state → suppressed (opt-out / deletion)   sold → returned (credited)
 | Consent certificates | TrustedForm |
 | Payments | Stripe |
 | Hosting | Railway (web + worker + Postgres in one place) |
+| AI (outreach drafts) | Claude API via `@anthropic-ai/sdk` in `packages/integrations` (optional; a few cents per draft) |
 | Tests | Vitest (unit/integration), Playwright (critical flows) |
 | CI | GitHub Actions: typecheck, lint, test, migration check |
 
@@ -323,7 +326,7 @@ Excluded from the platform budget: ad spend, mailer printing/postage, affiliate 
 - [x] Admin Markets page: switch products and states on/off, set age ranges
 - [x] Lead storage + admin lead list/detail + CSV export (for manual trial sales)
 - [x] Consumer opt-out page (EN/ES) → suppression list
-- [ ] Buyer finder v1: prospects, pipeline stages, notes, AI outreach drafts
+- [x] Buyer finder v1: prospects, CSV import, pipeline stages, follow-ups, notes, AI outreach drafts
 - [x] Drafts for counsel: consent text (EN/ES), buyer agreement, privacy policy, terms (`docs/legal/`)
 - [ ] Publish privacy/terms/partners pages once counsel approves (placeholders today)
 - [ ] Outreach email templates and a one-page buyer pitch
@@ -371,7 +374,8 @@ payouts; live transfers; owner's own agency as buyer with "first look".
 | 2026-10-13 | v1.0 plan approved: D1–D9 above |
 | 2026-10-13 | i18n via typed message files instead of next-intl (fewer dependencies, compiler-checked parity) |
 | 2026-10-13 | Phase 0 admin login is a single owner password; real accounts arrive with buyer logins (M3) |
-| 2026-10-13 | `apps/worker` and `packages/integrations` deferred until the first background job / vendor call |
+| 2026-10-13 | `apps/worker` deferred until the first background job; `packages/integrations` added with the Claude outreach writer |
 | 2026-10-13 | Out-of-area ZIPs are rejected at the form and not stored (data minimization) |
 | 2026-10-13 | Immutability of consent snapshots, consent wording, and audit log enforced by DB triggers |
+| 2026-10-13 | Buyer finder emails are drafted by Claude but sent by the owner from their own mail app (no automated sending; keeps volume human-scale and CAN-SPAM simple) |
 | 2026-10-13 | D1 changed: from final expense only to multiple admin-selectable "living benefit" lines; final expense off by default. Products and states are switched on/off in Admin → Markets |

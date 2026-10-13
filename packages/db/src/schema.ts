@@ -217,3 +217,82 @@ export const auditLog = pgTable(
   },
   (t) => [index("audit_log_created_at").on(t.createdAt)],
 );
+
+export const prospectTypeEnum = pgEnum("prospect_type", [
+  "agent",
+  "agency",
+  "call_center",
+  "fmo_imo",
+  "other",
+]);
+export const prospectStageEnum = pgEnum("prospect_stage", [
+  "prospect",
+  "contacted",
+  "replied",
+  "trial_sent",
+  "paying",
+  "lost",
+]);
+export const prospectActivityTypeEnum = pgEnum("prospect_activity_type", [
+  "created",
+  "imported",
+  "note",
+  "call",
+  "email_sent",
+  "stage_change",
+  "do_not_contact",
+  "trial",
+]);
+
+/** Buyer finder (PLAN.md §4.6): potential lead buyers. B2B contact data. */
+export const buyerProspects = pgTable(
+  "buyer_prospects",
+  {
+    id: id(),
+    name: text("name").notNull(),
+    company: text("company"),
+    type: prospectTypeEnum("type").notNull(),
+    email: text("email"),
+    phone: text("phone"),
+    website: text("website"),
+    city: text("city"),
+    state: text("state"),
+    licensedStates: text("licensed_states").array().notNull().default(sql`'{}'::text[]`),
+    lines: text("lines").array().notNull().default(sql`'{}'::text[]`),
+    languages: text("languages").array().notNull().default(sql`'{}'::text[]`),
+    npn: text("npn"),
+    source: text("source"),
+    notes: text("notes"),
+    stage: prospectStageEnum("stage").notNull().default("prospect"),
+    nextFollowUpOn: date("next_follow_up_on"),
+    lastContactedAt: timestamp("last_contacted_at", { withTimezone: true }),
+    /** Asked not to be emailed (CAN-SPAM opt-out). Outreach is blocked while true. */
+    doNotContact: boolean("do_not_contact").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("buyer_prospects_email_unique")
+      .on(sql`lower(${t.email})`)
+      .where(sql`${t.email} IS NOT NULL`),
+    uniqueIndex("buyer_prospects_npn_unique").on(t.npn).where(sql`${t.npn} IS NOT NULL`),
+    index("buyer_prospects_stage").on(t.stage),
+    index("buyer_prospects_follow_up").on(t.nextFollowUpOn),
+  ],
+);
+
+export const prospectActivities = pgTable(
+  "prospect_activities",
+  {
+    id: id(),
+    prospectId: uuid("prospect_id")
+      .notNull()
+      .references(() => buyerProspects.id, { onDelete: "cascade" }),
+    type: prospectActivityTypeEnum("type").notNull(),
+    summary: text("summary").notNull(),
+    details: jsonb("details").$type<Record<string, unknown>>().notNull().default({}),
+    actor: text("actor").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("prospect_activities_prospect").on(t.prospectId, t.createdAt)],
+);

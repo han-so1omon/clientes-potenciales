@@ -11,6 +11,11 @@ export const E2E_ENV = {
   ADMIN_PASSWORD: "e2e-admin-pass",
   ADMIN_SESSION_SECRET: "e2e-session-secret-0123456789",
   NEXT_PUBLIC_TRUSTEDFORM_ENABLED: "false",
+  // No ANTHROPIC_API_KEY: outreach uses the template writer, so tests never call the API.
+  ANTHROPIC_API_KEY: "",
+  OUTREACH_SENDER_NAME: "Sam Owner",
+  BUSINESS_NAME: "Example Leads LLC",
+  BUSINESS_MAILING_ADDRESS: "123 Main St, Miami, FL 33101",
 };
 
 export default defineConfig({

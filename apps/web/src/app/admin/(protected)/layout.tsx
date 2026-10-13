@@ -13,6 +13,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
         <nav className="flex gap-6 font-semibold">
           <Link href="/admin/leads">Leads</Link>
           <Link href="/admin/markets">Markets</Link>
+          <Link href="/admin/prospects">Buyer finder</Link>
         </nav>
         <form action={logout}>
           <button type="submit" className="underline">

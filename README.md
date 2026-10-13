@@ -8,8 +8,8 @@ English/Spanish) to licensed agents and agencies.
 - Legal drafts for attorney review: [`docs/legal/`](docs/legal/README.md)
 
 Status: Phase 0 in progress — landing pages (EN/ES) for several senior "living benefit" insurance
-lines that the admin switches on/off, lead capture with consent records, consumer opt-out, and an
-admin console with compliant CSV export.
+lines that the admin switches on/off, lead capture with consent records, consumer opt-out, an
+admin console with compliant CSV export, and a buyer finder (prospect CRM with AI-drafted outreach).
 
 ## Local setup
 

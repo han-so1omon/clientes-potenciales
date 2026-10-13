@@ -19,3 +19,26 @@ export function serverEnv(): ServerEnv {
 }
 
 export const trustedFormEnabled = process.env.NEXT_PUBLIC_TRUSTEDFORM_ENABLED === "true";
+
+const outreachEnvSchema = z.object({
+  /** Optional: enables AI-drafted outreach emails. Without it, a built-in template is used. */
+  ANTHROPIC_API_KEY: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : undefined)),
+  OUTREACH_SENDER_NAME: z.string().default(""),
+  BUSINESS_NAME: z.string().default(""),
+  /** Physical postal address, required in commercial email by CAN-SPAM. */
+  BUSINESS_MAILING_ADDRESS: z.string().default(""),
+});
+
+export type OutreachEnv = z.infer<typeof outreachEnvSchema> & { missing: string[] };
+
+/** Settings for buyer outreach emails, with a list of anything still unset. */
+export function outreachEnv(): OutreachEnv {
+  const env = outreachEnvSchema.parse(process.env);
+  const missing = (
+    ["OUTREACH_SENDER_NAME", "BUSINESS_NAME", "BUSINESS_MAILING_ADDRESS"] as const
+  ).filter((key) => !env[key]);
+  return { ...env, missing };
+}

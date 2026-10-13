@@ -70,9 +70,13 @@ All of lint, typecheck, `pnpm test`, and e2e must pass before pushing; CI runs t
   `{{PRODUCT}}` is replaced by each line's name.
 - Server actions are public endpoints: every admin action must call `requireAdmin()` itself.
 - Admin console: `apps/web/src/app/admin/`; every admin page/route must call `requireAdmin()`/`isAdmin()`.
+- Buyer finder: rules/CSV/templates in `packages/core/src/prospects.ts`, queries in
+  `packages/db/src/prospects.ts`, UI in `apps/web/src/app/admin/(protected)/prospects/`.
+  Claude email drafting: `packages/integrations/src/outreachWriter.ts` (always falls back to the
+  template; tests use a fake client and never call the API). Owner guide: `docs/runbooks/finding-buyers.md`.
 
 ## Repo layout
 
 See PLAN.md §8. Today: `apps/web` (Next.js), `packages/core` (pure domain logic), `packages/db`
-(Drizzle), `docs/` (plan + legal drafts). Added when first needed: `apps/worker` (pg-boss jobs),
-`packages/integrations` (vendor adapters).
+(Drizzle), `packages/integrations` (vendor adapters: Claude), `docs/` (plan, runbooks, legal drafts).
+Added when first needed: `apps/worker` (pg-boss jobs).
