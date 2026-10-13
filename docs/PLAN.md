@@ -7,7 +7,9 @@ record the change in the Decision Log at the bottom.
 
 ## 1. Summary
 
-A platform to **generate, verify, and sell insurance leads** for U.S. consumers aged ~60+, starting in
+A platform to **generate, verify, and sell insurance leads** for U.S. consumers aged ~50+ (core market
+60+) for insurance that pays benefits **while the person is alive** (care, illness, hospital, health-cost
+gaps), starting in
 the **Southeast** (FL, GA, AL, MS, TN, SC, NC, LA), in **English and Spanish**.
 
 - **Now:** sell the owner's own leads to licensed agents and agencies.
@@ -19,7 +21,7 @@ the **Southeast** (FL, GA, AL, MS, TN, SC, NC, LA), in **English and Spanish**.
 
 | # | Decision | Choice |
 |---|---|---|
-| D1 | First insurance line | **Final expense**; then Medicare Supplement; Medicare Advantage/Part D only after legal sign-off |
+| D1 | Insurance lines | **Multiple "living benefit" lines for 50+**, each switched on/off by the admin (Markets page): long-term care, home health care, critical illness, hospital indemnity, life insurance with living benefits, dental/vision/hearing. Medicare Supplement available but off until counsel sign-off; final expense (burial) available but off by default. Medicare Advantage/Part D not offered |
 | D2 | Landing pages | **Hosted by this platform** (full control of consent records) |
 | D3 | Stack | **TypeScript** end to end (see §8) |
 | D4 | Platform budget | **~$200/month** to start (excludes ad/mailer spend and legal fees) |
@@ -96,9 +98,11 @@ Claude drafts all of the above for counsel to review. **None are used live until
 ## 4. Modules
 
 ### 4.1 Lead capture — landing pages
-- Template-based pages per **line × language** (start: final expense EN, final expense ES).
-- Short multi-step form (senior-friendly: large text, high contrast, mobile-first, few fields):
-  coverage amount interest, age/DOB, ZIP, name, phone, email (optional), best time to call.
+- One page per **enabled line × language** at `/{en|es}/{line-slug}`; `/{en|es}` lists enabled lines.
+- Lines are defined in code (`LINE_CATALOG`); which are offered, their age ranges, and which states
+  accept leads are **admin settings** (Admin → Markets). See `docs/runbooks/add-insurance-line.md`.
+- Short form (senior-friendly: large text, high contrast, mobile-first, few fields): one qualifying
+  question per line (never health questions), DOB, ZIP, name, phone, email (optional), best time to call.
 - TrustedForm script on every page; consent checkbox/disclosure adjacent to submit button.
 - UTM / campaign parameters captured automatically; mailer QR codes land here with the drop's code.
 - Thank-you page sets expectations ("a licensed agent will call you").
@@ -162,9 +166,11 @@ Phase 3: ping-post (anonymized preview → bids → sale).
 - Fields: name, company, states licensed, lines, language served (flag Spanish-speaking agents),
   contact info, source, notes.
 - **Pipeline:** `prospect → contacted → replied → trial sent → paying → churned`.
-- **AI-drafted outreach:** Claude drafts personalized emails; drafts are placed in the owner's Gmail
-  (or shown in-app) for review; the owner sends. Follow-up reminders. CAN-SPAM footer and opt-out
-  honored. No automated cold calls or texts.
+- **AI-drafted outreach:** Claude drafts personalized emails in English or Spanish (template fallback
+  when no API key is set or the AI call fails); the owner edits in-app, sends from their own email app,
+  then logs it — which moves the prospect to *Contacted* and schedules a follow-up 4 days later.
+  CAN-SPAM footer (name, postal address, opt-out) appended automatically; "do not contact" blocks
+  outreach. No automated sending, cold calls, or texts. See `docs/runbooks/finding-buyers.md`.
 - **Trial offer:** send N free/discounted leads to a prospect, tracked as a promotional sale.
 - Reports: which prospect sources turn into paying buyers.
 
@@ -198,7 +204,9 @@ Money is always **integer cents**. Timestamps are UTC. All tables have `id`, `cr
 | `Affiliate` | source_id, api_key_hash, payout_cents, status |
 | `ConsentVersion` | line, language, version, text, buyer disclosure list, counsel_approved_at, active |
 | `LandingPage` | slug, line, language, template, consent_version_id, status |
-| `Lead` | supplier_id, campaign_id, line, first/last name, phone (E.164), email, dob, zip, state, county, time zone, language, status, tier, score, phone_hash |
+| `InsuranceLine` | key (catalog line), enabled, min_age, max_age — admin-controlled |
+| `ServiceState` | state, enabled — admin-controlled |
+| `Lead` | supplier_id, campaign_id, line, interest (answer to the line's question), first/last name, phone (E.164), email, dob, zip, state, county, time zone, language, status, tier, score, phone_hash |
 | `ConsentSnapshot` | lead_id, consent_version_id, rendered_text, consented_at, ip, user_agent, page_url, trustedform_url, jornaya_id — **immutable** |
 | `ValidationResult` | lead_id, check, provider, outcome, details (JSON) |
 | `Buyer` | name, type, status, agreement_version, agreement_accepted_at |
@@ -211,8 +219,8 @@ Money is always **integer cents**. Timestamps are UTC. All tables have `id`, `cr
 | `LedgerEntry` | buyer_id, amount_cents (+/−), type (`topup`/`sale`/`return_credit`/`adjustment`/`promo`), ref, **append-only** |
 | `Suppression` | phone_hash/email_hash, reason, source, created_at |
 | `StateRule` | state, rule type, value (calling hours, frequency limits, notes) |
-| `BuyerProspect` | name, company, states, lines, languages, contact, source, stage, owner notes |
-| `ProspectActivity` | prospect_id, type (email/call/note/trial), content, at |
+| `BuyerProspect` | name, company, type, email, phone, NPN, licensed states, lines, languages, source, stage, next follow-up, do-not-contact, notes (unique by email / NPN) |
+| `ProspectActivity` | prospect_id, type (created/imported/note/call/email_sent/stage_change/do_not_contact/trial), summary, details, actor |
 | `AuditLog` | actor, action, entity, before/after, at |
 
 ### Lead lifecycle
@@ -257,17 +265,18 @@ any state → suppressed (opt-out / deletion)   sold → returned (credited)
 |---|---|
 | Language | TypeScript (strict) |
 | Web app (landing pages, portal, admin, API) | Next.js (App Router) |
-| i18n | next-intl (EN/ES) |
+| i18n | Typed EN/ES message files (`es` checked against `en` by the compiler) |
 | Database | Postgres |
 | ORM / migrations | Drizzle |
 | Validation | Zod (all inputs, filters, webhook payloads) |
 | Background jobs | pg-boss (queue in Postgres — no extra vendor) |
-| Auth | Auth.js with email magic links |
+| Auth | Phase 0: single owner password + signed cookie. Phase 1 (M3): Auth.js with email magic links |
 | Email | Resend (transactional) |
 | SMS / phone lookup | Twilio |
 | Consent certificates | TrustedForm |
 | Payments | Stripe |
 | Hosting | Railway (web + worker + Postgres in one place) |
+| AI (outreach drafts) | Claude API via `@anthropic-ai/sdk` in `packages/integrations` (optional; a few cents per draft) |
 | Tests | Vitest (unit/integration), Playwright (critical flows) |
 | CI | GitHub Actions: typecheck, lint, test, migration check |
 
@@ -312,11 +321,14 @@ Excluded from the platform budget: ad spend, mailer printing/postage, affiliate 
 - [ ] List 20–50 initial buyer prospects (or let the buyer finder help)
 
 **Claude tasks**
-- [ ] Scaffold monorepo, CI, CLAUDE.md conventions, Drizzle schema for Phase 0 entities
-- [ ] Final expense landing page EN + ES with consent capture and TrustedForm hook
-- [ ] Lead storage + admin lead list/detail + CSV export (for manual trial sales)
-- [ ] Buyer finder v1: prospects, pipeline stages, notes, AI outreach drafts
-- [ ] Drafts for counsel: consent text (EN/ES), buyer agreement, privacy policy, terms
+- [x] Scaffold monorepo, CI, CLAUDE.md conventions, Drizzle schema for Phase 0 entities
+- [x] Landing pages EN + ES per product line with consent capture and TrustedForm hook
+- [x] Admin Markets page: switch products and states on/off, set age ranges
+- [x] Lead storage + admin lead list/detail + CSV export (for manual trial sales)
+- [x] Consumer opt-out page (EN/ES) → suppression list
+- [x] Buyer finder v1: prospects, CSV import, pipeline stages, follow-ups, notes, AI outreach drafts
+- [x] Drafts for counsel: consent text (EN/ES), buyer agreement, privacy policy, terms (`docs/legal/`)
+- [ ] Publish privacy/terms/partners pages once counsel approves (placeholders today)
 - [ ] Outreach email templates and a one-page buyer pitch
 
 **Exit criteria:** counsel-approved consent live; first leads captured; ≥3 trial buyers.
@@ -324,15 +336,18 @@ Excluded from the platform budget: ad spend, mailer printing/postage, affiliate 
 ### Phase 1 — MVP (weeks 3–8)
 - M1: Intake API + all source types + campaigns + cost entry
 - M2: Quality pipeline (normalize, validate, fraud, suppression, dedupe, score)
-- M3: Buyer accounts, licenses, agreement acceptance, wallet + Stripe, ledger
+- M3: Buyer accounts, licenses, agreement acceptance, wallet + Stripe, ledger; partner list page
+  backed by buyer records, and the partner list in effect saved into each consent snapshot
 - M4: Buyer campaigns + distribution engine + webhook/email/SMS delivery
 - M5: Returns flow; admin dashboards (margin by source, return rates)
-- M6: Opt-out/data-request page; audit log; hardening and launch checklist
+- M6: Data-request (access/deletion) handling — deletion anonymizes lead PII but keeps the consent
+  snapshot as legal evidence (confirm with counsel); hardening and launch checklist
 
 **Exit criteria:** leads sell automatically to paying buyers; margin-by-source report is trustworthy.
 
 ### Phase 2 — Scale (months 3–4)
-Affiliate portal + API keys; CRM integrations (GoHighLevel, AgencyZoom, etc.); aged-lead store;
+Affiliate portal + API keys; SMS (must honor STOP **and Spanish keywords** such as ALTO/PARAR);
+CRM integrations (GoHighLevel, AgencyZoom, etc.); aged-lead store;
 Medicare Supplement line; Spanish buyer portal; buyer outcome reporting; litigator scrub vendor.
 
 ### Phase 3 — Medicare & marketplace (before next AEP, Oct 2027)
@@ -357,3 +372,10 @@ payouts; live transfers; owner's own agency as buyer with "first look".
 | Date | Decision |
 |---|---|
 | 2026-10-13 | v1.0 plan approved: D1–D9 above |
+| 2026-10-13 | i18n via typed message files instead of next-intl (fewer dependencies, compiler-checked parity) |
+| 2026-10-13 | Phase 0 admin login is a single owner password; real accounts arrive with buyer logins (M3) |
+| 2026-10-13 | `apps/worker` deferred until the first background job; `packages/integrations` added with the Claude outreach writer |
+| 2026-10-13 | Out-of-area ZIPs are rejected at the form and not stored (data minimization) |
+| 2026-10-13 | Immutability of consent snapshots, consent wording, and audit log enforced by DB triggers |
+| 2026-10-13 | Buyer finder emails are drafted by Claude but sent by the owner from their own mail app (no automated sending; keeps volume human-scale and CAN-SPAM simple) |
+| 2026-10-13 | D1 changed: from final expense only to multiple admin-selectable "living benefit" lines; final expense off by default. Products and states are switched on/off in Admin → Markets |

@@ -39,9 +39,44 @@ safely: small modules, explicit types, tests next to logic, no cleverness.
 
 ## Commands
 
-_To be filled in when the monorepo is scaffolded (Phase 0)._
+Run from the repo root (pnpm workspaces, Node 22+, Postgres 16).
+
+| Task | Command |
+|---|---|
+| Install | `pnpm install` |
+| Lint / format check | `pnpm lint` (auto-fix: `pnpm format`) |
+| Typecheck | `pnpm typecheck` |
+| Unit + DB integration tests | `pnpm test` (needs Postgres; DB tests use `TEST_DATABASE_URL`, default `postgres://postgres:postgres@localhost:5432/clientes_test`) |
+| End-to-end tests | `pnpm build && pnpm test:e2e` (uses `E2E_DATABASE_URL`, default `.../clientes_e2e`; set `PLAYWRIGHT_CHROMIUM_PATH` to use a preinstalled Chromium) |
+| Dev server | `pnpm dev` (env in `apps/web/.env.local`, see `apps/web/.env.example`) |
+| New migration | edit `packages/db/src/schema.ts`, then `pnpm db:generate` |
+| Custom SQL migration (triggers etc.) | `pnpm --filter @cp/db exec drizzle-kit generate --custom --name <name>` |
+| Apply migrations / seed | `DATABASE_URL=... pnpm db:migrate` / `pnpm db:seed` |
+
+All of lint, typecheck, `pnpm test`, and e2e must pass before pushing; CI runs the same steps.
+
+## Where things live
+
+- Product lines catalog (what exists): `packages/core/src/lines.ts`; live on/off + ages + states
+  are DB settings edited in Admin → Markets (`packages/db/src/markets.ts`). Adding a line:
+  `docs/runbooks/add-insurance-line.md`.
+- Lead form validation & normalization: `packages/core/src/leadSubmission.ts`
+- Compliance gate (can this lead be sold?): `packages/core/src/sellability.ts`
+- ZIP → state/time zone: `packages/core/src/geo.ts`
+- DB immutability triggers: `packages/db/migrations/0001_immutability.sql`
+- Site copy (EN/ES): `apps/web/src/lib/messages/{en,es}.ts` — `es` is type-checked against `en`,
+  and a test checks the consent text quotes the exact submit-button label.
+- Draft consent templates seeded from `packages/db/src/seedData/consent.ts` (source: `docs/legal/`);
+  `{{PRODUCT}}` is replaced by each line's name.
+- Server actions are public endpoints: every admin action must call `requireAdmin()` itself.
+- Admin console: `apps/web/src/app/admin/`; every admin page/route must call `requireAdmin()`/`isAdmin()`.
+- Buyer finder: rules/CSV/templates in `packages/core/src/prospects.ts`, queries in
+  `packages/db/src/prospects.ts`, UI in `apps/web/src/app/admin/(protected)/prospects/`.
+  Claude email drafting: `packages/integrations/src/outreachWriter.ts` (always falls back to the
+  template; tests use a fake client and never call the API). Owner guide: `docs/runbooks/finding-buyers.md`.
 
 ## Repo layout
 
-See PLAN.md §8. In short: `apps/web` (Next.js), `apps/worker` (pg-boss jobs), `packages/core`
-(pure domain logic), `packages/db` (Drizzle), `packages/integrations` (vendor adapters), `docs/`.
+See PLAN.md §8. Today: `apps/web` (Next.js), `packages/core` (pure domain logic), `packages/db`
+(Drizzle), `packages/integrations` (vendor adapters: Claude), `docs/` (plan, runbooks, legal drafts).
+Added when first needed: `apps/worker` (pg-boss jobs).
