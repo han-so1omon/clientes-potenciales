@@ -1,0 +1,24 @@
+{
+  "name": "clientes-potenciales",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @cp/web test:e2e",
+    "db:generate": "pnpm --filter @cp/db generate",
+    "db:migrate": "pnpm --filter @cp/db migrate",
+    "db:seed": "pnpm --filter @cp/db seed",
+    "dev": "pnpm --filter @cp/web dev",
+    "build": "pnpm --filter @cp/web build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "typescript": "^5.9.3"
+  }
+}

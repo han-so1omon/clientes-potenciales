@@ -5,5 +5,20 @@ English/Spanish) to licensed agents and agencies.
 
 - Product & implementation plan: [`docs/PLAN.md`](docs/PLAN.md)
 - Guidance for AI maintainers: [`CLAUDE.md`](CLAUDE.md)
+- Legal drafts for attorney review: [`docs/legal/`](docs/legal/README.md)
 
-Status: planning complete; Phase 0 (foundation) starting.
+Status: Phase 0 in progress — final expense landing pages (EN/ES), lead capture with consent
+records, consumer opt-out, and an admin console with compliant CSV export.
+
+## Local setup
+
+```bash
+pnpm install
+cp apps/web/.env.example apps/web/.env.local   # then edit values
+createdb clientes                               # Postgres 16
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/clientes pnpm db:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/clientes pnpm db:seed
+pnpm dev   # http://localhost:3000/en/final-expense  ·  admin: /admin
+```
+
+See [`CLAUDE.md`](CLAUDE.md) for test commands and rules.

@@ -39,9 +39,35 @@ safely: small modules, explicit types, tests next to logic, no cleverness.
 
 ## Commands
 
-_To be filled in when the monorepo is scaffolded (Phase 0)._
+Run from the repo root (pnpm workspaces, Node 22+, Postgres 16).
+
+| Task | Command |
+|---|---|
+| Install | `pnpm install` |
+| Lint / format check | `pnpm lint` (auto-fix: `pnpm format`) |
+| Typecheck | `pnpm typecheck` |
+| Unit + DB integration tests | `pnpm test` (needs Postgres; DB tests use `TEST_DATABASE_URL`, default `postgres://postgres:postgres@localhost:5432/clientes_test`) |
+| End-to-end tests | `pnpm build && pnpm test:e2e` (uses `E2E_DATABASE_URL`, default `.../clientes_e2e`; set `PLAYWRIGHT_CHROMIUM_PATH` to use a preinstalled Chromium) |
+| Dev server | `pnpm dev` (env in `apps/web/.env.local`, see `apps/web/.env.example`) |
+| New migration | edit `packages/db/src/schema.ts`, then `pnpm db:generate` |
+| Custom SQL migration (triggers etc.) | `pnpm --filter @cp/db exec drizzle-kit generate --custom --name <name>` |
+| Apply migrations / seed | `DATABASE_URL=... pnpm db:migrate` / `pnpm db:seed` |
+
+All of lint, typecheck, `pnpm test`, and e2e must pass before pushing; CI runs the same steps.
+
+## Where things live
+
+- Lead form validation & normalization: `packages/core/src/leadSubmission.ts`
+- Compliance gate (can this lead be sold?): `packages/core/src/sellability.ts`
+- ZIP → state/time zone: `packages/core/src/geo.ts`
+- DB immutability triggers: `packages/db/migrations/0001_immutability.sql`
+- Site copy (EN/ES): `apps/web/src/lib/messages/{en,es}.ts` — `es` is type-checked against `en`,
+  and a test checks the consent text quotes the exact submit-button label.
+- Draft consent text seeded from `packages/db/src/seedData/consent.ts` (source: `docs/legal/`).
+- Admin console: `apps/web/src/app/admin/`; every admin page/route must call `requireAdmin()`/`isAdmin()`.
 
 ## Repo layout
 
-See PLAN.md §8. In short: `apps/web` (Next.js), `apps/worker` (pg-boss jobs), `packages/core`
-(pure domain logic), `packages/db` (Drizzle), `packages/integrations` (vendor adapters), `docs/`.
+See PLAN.md §8. Today: `apps/web` (Next.js), `packages/core` (pure domain logic), `packages/db`
+(Drizzle), `docs/` (plan + legal drafts). Added when first needed: `apps/worker` (pg-boss jobs),
+`packages/integrations` (vendor adapters).

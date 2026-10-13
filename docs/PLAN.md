@@ -257,12 +257,12 @@ any state → suppressed (opt-out / deletion)   sold → returned (credited)
 |---|---|
 | Language | TypeScript (strict) |
 | Web app (landing pages, portal, admin, API) | Next.js (App Router) |
-| i18n | next-intl (EN/ES) |
+| i18n | Typed EN/ES message files (`es` checked against `en` by the compiler) |
 | Database | Postgres |
 | ORM / migrations | Drizzle |
 | Validation | Zod (all inputs, filters, webhook payloads) |
 | Background jobs | pg-boss (queue in Postgres — no extra vendor) |
-| Auth | Auth.js with email magic links |
+| Auth | Phase 0: single owner password + signed cookie. Phase 1 (M3): Auth.js with email magic links |
 | Email | Resend (transactional) |
 | SMS / phone lookup | Twilio |
 | Consent certificates | TrustedForm |
@@ -312,11 +312,13 @@ Excluded from the platform budget: ad spend, mailer printing/postage, affiliate 
 - [ ] List 20–50 initial buyer prospects (or let the buyer finder help)
 
 **Claude tasks**
-- [ ] Scaffold monorepo, CI, CLAUDE.md conventions, Drizzle schema for Phase 0 entities
-- [ ] Final expense landing page EN + ES with consent capture and TrustedForm hook
-- [ ] Lead storage + admin lead list/detail + CSV export (for manual trial sales)
+- [x] Scaffold monorepo, CI, CLAUDE.md conventions, Drizzle schema for Phase 0 entities
+- [x] Final expense landing page EN + ES with consent capture and TrustedForm hook
+- [x] Lead storage + admin lead list/detail + CSV export (for manual trial sales)
+- [x] Consumer opt-out page (EN/ES) → suppression list
 - [ ] Buyer finder v1: prospects, pipeline stages, notes, AI outreach drafts
-- [ ] Drafts for counsel: consent text (EN/ES), buyer agreement, privacy policy, terms
+- [x] Drafts for counsel: consent text (EN/ES), buyer agreement, privacy policy, terms (`docs/legal/`)
+- [ ] Publish privacy/terms/partners pages once counsel approves (placeholders today)
 - [ ] Outreach email templates and a one-page buyer pitch
 
 **Exit criteria:** counsel-approved consent live; first leads captured; ≥3 trial buyers.
@@ -324,15 +326,18 @@ Excluded from the platform budget: ad spend, mailer printing/postage, affiliate 
 ### Phase 1 — MVP (weeks 3–8)
 - M1: Intake API + all source types + campaigns + cost entry
 - M2: Quality pipeline (normalize, validate, fraud, suppression, dedupe, score)
-- M3: Buyer accounts, licenses, agreement acceptance, wallet + Stripe, ledger
+- M3: Buyer accounts, licenses, agreement acceptance, wallet + Stripe, ledger; partner list page
+  backed by buyer records, and the partner list in effect saved into each consent snapshot
 - M4: Buyer campaigns + distribution engine + webhook/email/SMS delivery
 - M5: Returns flow; admin dashboards (margin by source, return rates)
-- M6: Opt-out/data-request page; audit log; hardening and launch checklist
+- M6: Data-request (access/deletion) handling — deletion anonymizes lead PII but keeps the consent
+  snapshot as legal evidence (confirm with counsel); hardening and launch checklist
 
 **Exit criteria:** leads sell automatically to paying buyers; margin-by-source report is trustworthy.
 
 ### Phase 2 — Scale (months 3–4)
-Affiliate portal + API keys; CRM integrations (GoHighLevel, AgencyZoom, etc.); aged-lead store;
+Affiliate portal + API keys; SMS (must honor STOP **and Spanish keywords** such as ALTO/PARAR);
+CRM integrations (GoHighLevel, AgencyZoom, etc.); aged-lead store;
 Medicare Supplement line; Spanish buyer portal; buyer outcome reporting; litigator scrub vendor.
 
 ### Phase 3 — Medicare & marketplace (before next AEP, Oct 2027)
@@ -357,3 +362,8 @@ payouts; live transfers; owner's own agency as buyer with "first look".
 | Date | Decision |
 |---|---|
 | 2026-10-13 | v1.0 plan approved: D1–D9 above |
+| 2026-10-13 | i18n via typed message files instead of next-intl (fewer dependencies, compiler-checked parity) |
+| 2026-10-13 | Phase 0 admin login is a single owner password; real accounts arrive with buyer logins (M3) |
+| 2026-10-13 | `apps/worker` and `packages/integrations` deferred until the first background job / vendor call |
+| 2026-10-13 | Out-of-area ZIPs are rejected at the form and not stored (data minimization) |
+| 2026-10-13 | Immutability of consent snapshots, consent wording, and audit log enforced by DB triggers |
