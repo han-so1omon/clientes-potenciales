@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
@@ -13,4 +14,9 @@ export function databaseUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set (see .env.example)");
   return url;
+}
+
+/** Cheap connectivity check for health endpoints. Throws if the database is unreachable. */
+export async function pingDb(db: Db): Promise<void> {
+  await db.execute(sql`select 1`);
 }

@@ -22,4 +22,5 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/clientes pnpm db:seed
 pnpm dev   # http://localhost:3000/en  ·  admin: /admin
 ```
 
-See [`CLAUDE.md`](CLAUDE.md) for test commands and rules.
+See [`CLAUDE.md`](CLAUDE.md) for test commands and rules, and
+[`docs/runbooks/deploy-railway.md`](docs/runbooks/deploy-railway.md) to deploy.

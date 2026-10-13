@@ -52,3 +52,12 @@ jobs:
           name: playwright-report
           path: apps/web/test-results
           retention-days: 7
+
+  docker:
+    # Builds the production image used by Railway, so a broken Dockerfile fails CI, not the deploy.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image
+        run: docker build -t clientes-web .

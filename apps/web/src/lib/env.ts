@@ -18,7 +18,10 @@ export function serverEnv(): ServerEnv {
   return cached;
 }
 
-export const trustedFormEnabled = process.env.NEXT_PUBLIC_TRUSTEDFORM_ENABLED === "true";
+/** Read at request time (not inlined at build), so it can be flipped on the host without a rebuild. */
+export function trustedFormEnabled(): boolean {
+  return process.env.TRUSTEDFORM_ENABLED === "true";
+}
 
 const outreachEnvSchema = z.object({
   /** Optional: enables AI-drafted outreach emails. Without it, a built-in template is used. */

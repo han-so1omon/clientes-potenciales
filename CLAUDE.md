@@ -75,6 +75,12 @@ All of lint, typecheck, `pnpm test`, and e2e must pass before pushing; CI runs t
   Claude email drafting: `packages/integrations/src/outreachWriter.ts` (always falls back to the
   template; tests use a fake client and never call the API). Owner guide: `docs/runbooks/finding-buyers.md`.
 
+## Deployment
+
+Docker image (`Dockerfile`) on Railway; `scripts/start.sh` runs migrations and the seed on every
+start, so migrations must be safe to run on a live database (additive; no destructive changes
+without a data-migration plan). Health check: `/api/health`. Runbook: `docs/runbooks/deploy-railway.md`.
+
 ## Repo layout
 
 See PLAN.md §8. Today: `apps/web` (Next.js), `packages/core` (pure domain logic), `packages/db`
